@@ -113,7 +113,7 @@ public class SinkExecuteProcessor
                                         CommonOptions.PARALLELISM.defaultValue());
             }
             dataset.sparkSession().read().option(CommonOptions.PARALLELISM.key(), parallelism);
-            Map<String, SeaTunnelSink> sinks = new HashMap<>();
+            Map<TablePath, SeaTunnelSink> sinks = new HashMap<>();
             datasetTableInfo.getCatalogTables().stream()
                     .forEach(
                             catalogTable -> {
@@ -123,7 +123,7 @@ public class SinkExecuteProcessor
                                                 ReadonlyConfig.fromConfig(sinkConfig),
                                                 classLoader,
                                                 sinkConfig.getString(PLUGIN_NAME.key()));
-                                sinks.put(catalogTable.getTableId().toTablePath().toString(), sink);
+                                sinks.put(catalogTable.getTableId().toTablePath(), sink);
                             });
 
             SeaTunnelSink sink =
@@ -143,28 +143,6 @@ public class SinkExecuteProcessor
         }
         // the sink is the last stream
         return null;
-    }
-
-    public boolean isFallback(Factory factory) {
-        try {
-            ((TableSinkFactory) factory).createSink(null);
-        } catch (Exception e) {
-            if (e instanceof UnsupportedOperationException
-                    && "The Factory has not been implemented and the deprecated Plugin will be used."
-                            .equals(e.getMessage())) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    public SeaTunnelSink fallbackCreateSink(
-            SeaTunnelSinkPluginDiscovery sinkPluginDiscovery,
-            PluginIdentifier pluginIdentifier,
-            Config pluginConfig) {
-        SeaTunnelSink source = sinkPluginDiscovery.createPluginInstance(pluginIdentifier);
-        source.prepare(pluginConfig);
-        return source;
     }
 
     public void handleSaveMode(SeaTunnelSink sink) {

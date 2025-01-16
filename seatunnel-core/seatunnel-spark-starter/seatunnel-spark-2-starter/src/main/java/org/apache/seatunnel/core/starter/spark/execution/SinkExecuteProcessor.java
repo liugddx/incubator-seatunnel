@@ -112,7 +112,7 @@ public class SinkExecuteProcessor
                                         CommonOptions.PARALLELISM.defaultValue());
             }
             dataset.sparkSession().read().option(CommonOptions.PARALLELISM.key(), parallelism);
-            Map<String, SeaTunnelSink> sinks = new HashMap<>();
+            Map<TablePath, SeaTunnelSink> sinks = new HashMap<>();
             datasetTableInfo.getCatalogTables().stream()
                     .forEach(
                             catalogTable -> {
@@ -122,7 +122,7 @@ public class SinkExecuteProcessor
                                                 ReadonlyConfig.fromConfig(sinkConfig),
                                                 classLoader,
                                                 sinkConfig.getString(PLUGIN_NAME.key()));
-                                sinks.put(catalogTable.getTableId().toTablePath().toString(), sink);
+                                sinks.put(catalogTable.getTableId().toTablePath(), sink);
                             });
 
             SeaTunnelSink sink =
