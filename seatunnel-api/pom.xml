@@ -41,11 +41,5 @@
             <version>${project.version}</version>
             <classifier>optional</classifier>
         </dependency>
-        <dependency>
-            <groupId>org.apache.seatunnel</groupId>
-            <artifactId>seatunnel-plugin-discovery</artifactId>
-            <version>${project.version}</version>
-            <scope>provided</scope>
-        </dependency>
     </dependencies>
 </project>
