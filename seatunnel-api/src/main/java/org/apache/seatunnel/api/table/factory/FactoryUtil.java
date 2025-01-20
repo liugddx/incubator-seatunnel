@@ -103,10 +103,6 @@ public final class FactoryUtil {
                             factoryId,
                             (sourceFactory) -> sourceFactory.createSource(null));
 
-            if (factory == null) {
-                factory = discoverFactory(classLoader, TableSourceFactory.class, factoryIdentifier);
-            }
-
             if (fallback) {
                 source =
                         fallbackCreateSource.apply(
@@ -114,6 +110,12 @@ public final class FactoryUtil {
                 source.prepare(options.toConfig());
 
             } else {
+                if (factory == null) {
+                    factory =
+                            discoverFactory(
+                                    classLoader, TableSourceFactory.class, factoryIdentifier);
+                }
+
                 if (factory instanceof ChangeStreamTableSourceFactory && checkpoint != null) {
                     ChangeStreamTableSourceFactory changeStreamTableSourceFactory =
                             (ChangeStreamTableSourceFactory) factory;
@@ -200,18 +202,6 @@ public final class FactoryUtil {
                             factoryId,
                             (sinkFactory) -> sinkFactory.createSink(null));
 
-            if (tableSinkFactory == null) {
-                tableSinkFactory =
-                        discoverFactory(classLoader, TableSinkFactory.class, factoryIdentifier);
-            }
-            TableSinkFactoryContext context =
-                    TableSinkFactoryContext.replacePlaceholderAndCreate(
-                            catalogTable,
-                            config,
-                            classLoader,
-                            tableSinkFactory.excludeTablePlaceholderReplaceKeys());
-            ConfigValidator.of(context.getOptions()).validate(tableSinkFactory.optionRule());
-
             if (fallback) {
                 SeaTunnelSink sink =
                         fallbackCreateSink.apply(
@@ -221,6 +211,19 @@ public final class FactoryUtil {
 
                 return sink;
             }
+
+            if (tableSinkFactory == null) {
+                tableSinkFactory =
+                        discoverFactory(classLoader, TableSinkFactory.class, factoryIdentifier);
+            }
+
+            TableSinkFactoryContext context =
+                    TableSinkFactoryContext.replacePlaceholderAndCreate(
+                            catalogTable,
+                            config,
+                            classLoader,
+                            tableSinkFactory.excludeTablePlaceholderReplaceKeys());
+            ConfigValidator.of(context.getOptions()).validate(tableSinkFactory.optionRule());
 
             LOG.info(
                     "Create sink '{}' with upstream input catalog-table[database: {}, schema: {}, table: {}]",
