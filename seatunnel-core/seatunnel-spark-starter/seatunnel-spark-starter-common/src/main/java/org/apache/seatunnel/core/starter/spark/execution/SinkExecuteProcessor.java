@@ -134,12 +134,12 @@ public class SinkExecuteProcessor
                                                 classLoader,
                                                 sinkConfig.getString(PLUGIN_NAME.key()),
                                                 createSinkfunction);
+                                sink.setJobContext(jobContext);
                                 sinks.put(catalogTable.getTableId().toTablePath(), sink);
                             });
             SeaTunnelSink sink =
                     tryGenerateMultiTableSink(
                             sinks, ReadonlyConfig.fromConfig(sinkConfig), classLoader);
-            sink.setJobContext(jobContext);
             // TODO modify checkpoint location
             handleSaveMode(sink);
             String applicationId =
