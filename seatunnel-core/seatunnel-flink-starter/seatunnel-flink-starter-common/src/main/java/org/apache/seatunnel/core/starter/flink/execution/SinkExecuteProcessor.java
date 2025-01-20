@@ -35,7 +35,6 @@ import org.apache.seatunnel.api.table.factory.Factory;
 import org.apache.seatunnel.api.table.factory.FactoryUtil;
 import org.apache.seatunnel.api.table.factory.TableSinkFactory;
 import org.apache.seatunnel.api.table.type.SeaTunnelRow;
-import org.apache.seatunnel.api.table.type.SeaTunnelRowType;
 import org.apache.seatunnel.common.exception.SeaTunnelRuntimeException;
 import org.apache.seatunnel.core.starter.exception.TaskExecuteException;
 import org.apache.seatunnel.core.starter.execution.PluginUtil;
@@ -116,8 +115,6 @@ public class SinkExecuteProcessor
                                 sinkConfig.getString(PLUGIN_NAME.key()),
                                 createSinkfunction);
                 sink.setJobContext(jobContext);
-                SeaTunnelRowType sourceType = catalogTable.getSeaTunnelRowType();
-                sink.setTypeInfo(sourceType);
                 handleSaveMode(sink);
                 TableIdentifier tableId = catalogTable.getTableId();
                 sinks.put(tableId.toTablePath(), sink);

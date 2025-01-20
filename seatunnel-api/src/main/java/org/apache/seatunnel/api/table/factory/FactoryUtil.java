@@ -207,6 +207,7 @@ public final class FactoryUtil {
                         createSinkFunction.apply(
                                 PluginIdentifier.of("seatunnel", "sink", factoryId));
                 sink.prepare(config.toConfig());
+                sink.setTypeInfo(catalogTable.getSeaTunnelRowType());
 
                 return sink;
             }
