@@ -92,9 +92,7 @@ public final class FactoryUtil {
                     TableSourceFactory factory) {
 
         try {
-            if (factory == null) {
-                factory = discoverFactory(classLoader, TableSourceFactory.class, factoryIdentifier);
-            }
+
             SeaTunnelSource<T, SplitT, StateT> source;
             final String factoryId = options.get(PLUGIN_NAME);
 
@@ -104,6 +102,10 @@ public final class FactoryUtil {
                             TableSourceFactory.class,
                             factoryId,
                             (sourceFactory) -> sourceFactory.createSource(null));
+
+            if (factory == null) {
+                factory = discoverFactory(classLoader, TableSourceFactory.class, factoryIdentifier);
+            }
 
             if (fallback) {
                 source =
@@ -189,6 +191,15 @@ public final class FactoryUtil {
                     TableSinkFactory<IN, StateT, CommitInfoT, AggregatedCommitInfoT>
                             tableSinkFactory) {
         try {
+            final String factoryId = config.get(PLUGIN_NAME);
+
+            boolean fallback =
+                    isFallback(
+                            classLoader,
+                            TableSinkFactory.class,
+                            factoryId,
+                            (sinkFactory) -> sinkFactory.createSink(null));
+
             if (tableSinkFactory == null) {
                 tableSinkFactory =
                         discoverFactory(classLoader, TableSinkFactory.class, factoryIdentifier);
@@ -201,14 +212,6 @@ public final class FactoryUtil {
                             tableSinkFactory.excludeTablePlaceholderReplaceKeys());
             ConfigValidator.of(context.getOptions()).validate(tableSinkFactory.optionRule());
 
-            final String factoryId = config.get(PLUGIN_NAME);
-
-            boolean fallback =
-                    isFallback(
-                            classLoader,
-                            TableSinkFactory.class,
-                            factoryId,
-                            (sinkFactory) -> sinkFactory.createSink(null));
             if (fallback) {
                 SeaTunnelSink sink =
                         fallbackCreateSink.apply(
@@ -414,8 +417,7 @@ public final class FactoryUtil {
             Class<T> factoryClass,
             String factoryId,
             Consumer<T> virtualCreator) {
-        Optional<T> factory =
-                FactoryUtil.discoverOptionalFactory(classLoader, factoryClass, factoryId);
+        Optional<T> factory = discoverOptionalFactory(classLoader, factoryClass, factoryId);
         if (!factory.isPresent()) {
             return true;
         }
