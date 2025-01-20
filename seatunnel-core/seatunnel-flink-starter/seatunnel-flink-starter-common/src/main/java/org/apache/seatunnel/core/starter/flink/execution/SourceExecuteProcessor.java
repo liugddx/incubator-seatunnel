@@ -22,6 +22,7 @@ import org.apache.seatunnel.shade.com.typesafe.config.Config;
 
 import org.apache.seatunnel.api.common.CommonOptions;
 import org.apache.seatunnel.api.common.JobContext;
+import org.apache.seatunnel.api.common.PluginIdentifier;
 import org.apache.seatunnel.api.configuration.ReadonlyConfig;
 import org.apache.seatunnel.api.source.SeaTunnelSource;
 import org.apache.seatunnel.api.source.SourceSplit;
@@ -30,7 +31,6 @@ import org.apache.seatunnel.api.table.factory.FactoryUtil;
 import org.apache.seatunnel.api.table.type.SeaTunnelRow;
 import org.apache.seatunnel.core.starter.enums.PluginType;
 import org.apache.seatunnel.core.starter.execution.SourceTableInfo;
-import org.apache.seatunnel.plugin.discovery.PluginIdentifier;
 import org.apache.seatunnel.plugin.discovery.seatunnel.SeaTunnelSourcePluginDiscovery;
 import org.apache.seatunnel.translation.flink.source.FlinkSource;
 
@@ -47,6 +47,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Function;
 
 import static org.apache.seatunnel.api.common.CommonOptions.PLUGIN_NAME;
 import static org.apache.seatunnel.api.common.CommonOptions.PLUGIN_OUTPUT;
@@ -100,6 +101,9 @@ public class SourceExecuteProcessor extends FlinkAbstractPluginExecuteProcessor<
         SeaTunnelSourcePluginDiscovery sourcePluginDiscovery =
                 new SeaTunnelSourcePluginDiscovery(ADD_URL_TO_CLASSLOADER);
 
+        Function<PluginIdentifier, SeaTunnelSource> createSourcefunction =
+                sourcePluginDiscovery::createPluginInstance;
+
         List<SourceTableInfo> sources = new ArrayList<>();
         Set<URL> jars = new HashSet<>();
         for (Config sourceConfig : pluginConfigs) {
@@ -113,7 +117,8 @@ public class SourceExecuteProcessor extends FlinkAbstractPluginExecuteProcessor<
                     FactoryUtil.createAndPrepareSource(
                             ReadonlyConfig.fromConfig(sourceConfig),
                             Thread.currentThread().getContextClassLoader(),
-                            pluginIdentifier.getPluginName());
+                            pluginIdentifier.getPluginName(),
+                            createSourcefunction);
 
             sources.add(new SourceTableInfo(source._1(), source._2()));
         }

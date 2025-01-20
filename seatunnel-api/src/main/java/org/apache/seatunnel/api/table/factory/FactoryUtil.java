@@ -17,9 +17,8 @@
 
 package org.apache.seatunnel.api.table.factory;
 
-import lombok.extern.slf4j.Slf4j;
 import org.apache.seatunnel.api.common.CommonOptions;
-import static org.apache.seatunnel.api.common.CommonOptions.PLUGIN_NAME;
+import org.apache.seatunnel.api.common.PluginIdentifier;
 import org.apache.seatunnel.api.configuration.ReadonlyConfig;
 import org.apache.seatunnel.api.configuration.util.ConfigValidator;
 import org.apache.seatunnel.api.configuration.util.OptionRule;
@@ -38,15 +37,13 @@ import org.apache.seatunnel.api.table.catalog.TablePath;
 import org.apache.seatunnel.api.table.connector.TableSource;
 import org.apache.seatunnel.api.table.type.SeaTunnelDataType;
 import org.apache.seatunnel.api.transform.SeaTunnelTransform;
-
 import org.apache.seatunnel.common.utils.ExceptionUtils;
-import org.apache.seatunnel.plugin.discovery.PluginIdentifier;
-import org.apache.seatunnel.plugin.discovery.seatunnel.SeaTunnelSinkPluginDiscovery;
-import org.apache.seatunnel.plugin.discovery.seatunnel.SeaTunnelSourcePluginDiscovery;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import lombok.NonNull;
+import lombok.extern.slf4j.Slf4j;
 import scala.Tuple2;
 
 import java.io.Serializable;
@@ -58,7 +55,10 @@ import java.util.Optional;
 import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.stream.Collectors;
+
+import static org.apache.seatunnel.api.common.CommonOptions.PLUGIN_NAME;
 
 /**
  * Use SPI to create {@link TableSourceFactory}, {@link TableSinkFactory} and {@link
@@ -72,17 +72,22 @@ public final class FactoryUtil {
     public static final String DEFAULT_ID = "default-identifier";
 
     public static <T, SplitT extends SourceSplit, StateT extends Serializable>
-    Tuple2<SeaTunnelSource<T, SplitT, StateT>, List<CatalogTable>> createAndPrepareSource(
-            ReadonlyConfig options, ClassLoader classLoader, String factoryIdentifier) {
-        return restoreAndPrepareSource(options, classLoader, factoryIdentifier, null);
+            Tuple2<SeaTunnelSource<T, SplitT, StateT>, List<CatalogTable>> createAndPrepareSource(
+                    ReadonlyConfig options,
+                    ClassLoader classLoader,
+                    String factoryIdentifier,
+                    Function<PluginIdentifier, SeaTunnelSource> createSourceFunction) {
+        return restoreAndPrepareSource(
+                options, classLoader, factoryIdentifier, null, createSourceFunction);
     }
 
     public static <T, SplitT extends SourceSplit, StateT extends Serializable>
-    Tuple2<SeaTunnelSource<T, SplitT, StateT>, List<CatalogTable>> restoreAndPrepareSource(
-            ReadonlyConfig options,
-            ClassLoader classLoader,
-            String factoryIdentifier,
-            ChangeStreamTableSourceCheckpoint checkpoint) {
+            Tuple2<SeaTunnelSource<T, SplitT, StateT>, List<CatalogTable>> restoreAndPrepareSource(
+                    ReadonlyConfig options,
+                    ClassLoader classLoader,
+                    String factoryIdentifier,
+                    ChangeStreamTableSourceCheckpoint checkpoint,
+                    Function<PluginIdentifier, SeaTunnelSource> createSourceFunction) {
 
         try {
             final TableSourceFactory factory =
@@ -98,10 +103,9 @@ public final class FactoryUtil {
                             (sourceFactory) -> sourceFactory.createSource(null));
 
             if (fallback) {
-                SeaTunnelSourcePluginDiscovery sourcePluginDiscovery =
-                        new SeaTunnelSourcePluginDiscovery();
-                source = sourcePluginDiscovery
-                        .createPluginInstance(PluginIdentifier.of("seatunnel", "source", factoryId));
+                source =
+                        createSourceFunction.apply(
+                                PluginIdentifier.of("seatunnel", "source", factoryId));
                 source.prepare(options.toConfig());
 
             } else {
@@ -116,7 +120,6 @@ public final class FactoryUtil {
                 } else {
                     source = createAndPrepareSource(factory, options, classLoader);
                 }
-
             }
             List<CatalogTable> catalogTables;
             try {
@@ -152,8 +155,8 @@ public final class FactoryUtil {
     }
 
     private static <T, SplitT extends SourceSplit, StateT extends Serializable>
-    SeaTunnelSource<T, SplitT, StateT> createAndPrepareSource(
-            TableSourceFactory factory, ReadonlyConfig options, ClassLoader classLoader) {
+            SeaTunnelSource<T, SplitT, StateT> createAndPrepareSource(
+                    TableSourceFactory factory, ReadonlyConfig options, ClassLoader classLoader) {
         TableSourceFactoryContext context = new TableSourceFactoryContext(options, classLoader);
         ConfigValidator.of(context.getOptions()).validate(factory.optionRule());
         TableSource<T, SplitT, StateT> tableSource = factory.createSource(context);
@@ -161,11 +164,11 @@ public final class FactoryUtil {
     }
 
     private static <T, SplitT extends SourceSplit, StateT extends Serializable>
-    SeaTunnelSource<T, SplitT, StateT> restoreAndPrepareSource(
-            ChangeStreamTableSourceFactory factory,
-            ReadonlyConfig options,
-            ClassLoader classLoader,
-            ChangeStreamTableSourceState state) {
+            SeaTunnelSource<T, SplitT, StateT> restoreAndPrepareSource(
+                    ChangeStreamTableSourceFactory factory,
+                    ReadonlyConfig options,
+                    ClassLoader classLoader,
+                    ChangeStreamTableSourceState state) {
         TableSourceFactoryContext context = new TableSourceFactoryContext(options, classLoader);
         ConfigValidator.of(context.getOptions()).validate(factory.optionRule());
         LOG.info("Restore create source from checkpoint state: {}", state);
@@ -173,13 +176,13 @@ public final class FactoryUtil {
         return tableSource.createSource();
     }
 
-
     public static <IN, StateT, CommitInfoT, AggregatedCommitInfoT>
-    SeaTunnelSink<IN, StateT, CommitInfoT, AggregatedCommitInfoT> createAndPrepareSink(
-            CatalogTable catalogTable,
-            ReadonlyConfig config,
-            ClassLoader classLoader,
-            String factoryIdentifier) {
+            SeaTunnelSink<IN, StateT, CommitInfoT, AggregatedCommitInfoT> createAndPrepareSink(
+                    CatalogTable catalogTable,
+                    ReadonlyConfig config,
+                    ClassLoader classLoader,
+                    String factoryIdentifier,
+                    Function<PluginIdentifier, SeaTunnelSink> createSinkFunction) {
         try {
             TableSinkFactory<IN, StateT, CommitInfoT, AggregatedCommitInfoT> factory =
                     discoverFactory(classLoader, TableSinkFactory.class, factoryIdentifier);
@@ -200,9 +203,9 @@ public final class FactoryUtil {
                             factoryId,
                             (sinkFactory) -> sinkFactory.createSink(null));
             if (fallback) {
-                SeaTunnelSinkPluginDiscovery sinkPluginDiscovery =
-                        new SeaTunnelSinkPluginDiscovery();
-                SeaTunnelSink sink = sinkPluginDiscovery.createPluginInstance(PluginIdentifier.of("seatunnel", "sink", factoryId));
+                SeaTunnelSink sink =
+                        createSinkFunction.apply(
+                                PluginIdentifier.of("seatunnel", "sink", factoryId));
                 sink.prepare(config.toConfig());
 
                 return sink;
@@ -224,10 +227,10 @@ public final class FactoryUtil {
     }
 
     public static <IN, StateT, CommitInfoT, AggregatedCommitInfoT>
-    SeaTunnelSink<IN, StateT, CommitInfoT, AggregatedCommitInfoT> createMultiTableSink(
-            Map<TablePath, SeaTunnelSink> sinks,
-            ReadonlyConfig options,
-            ClassLoader classLoader) {
+            SeaTunnelSink<IN, StateT, CommitInfoT, AggregatedCommitInfoT> createMultiTableSink(
+                    Map<TablePath, SeaTunnelSink> sinks,
+                    ReadonlyConfig options,
+                    ClassLoader classLoader) {
         try {
             TableSinkFactory<IN, StateT, CommitInfoT, AggregatedCommitInfoT> factory =
                     new MultiTableSinkFactory();
@@ -413,7 +416,7 @@ public final class FactoryUtil {
         } catch (Exception e) {
             if (e instanceof UnsupportedOperationException
                     && "The Factory has not been implemented and the deprecated Plugin will be used."
-                    .equals(e.getMessage())) {
+                            .equals(e.getMessage())) {
                 log.warn(
                         "The Factory has not been implemented and the deprecated Plugin will be used.");
                 return true;

@@ -22,6 +22,7 @@ import org.apache.seatunnel.shade.com.typesafe.config.ConfigFactory;
 import org.apache.seatunnel.shade.com.typesafe.config.ConfigResolveOptions;
 import org.apache.seatunnel.shade.com.typesafe.config.ConfigValue;
 
+import org.apache.seatunnel.api.common.PluginIdentifier;
 import org.apache.seatunnel.api.common.PluginIdentifierInterface;
 import org.apache.seatunnel.api.configuration.Option;
 import org.apache.seatunnel.api.configuration.util.OptionRule;
@@ -75,22 +76,26 @@ public abstract class AbstractPluginDiscovery<T> implements PluginDiscovery<T> {
      * Add jar url to classloader. The different engine should have different logic to add url into
      * their own classloader
      */
-    protected static final BiConsumer<ClassLoader, URL> DEFAULT_URL_TO_CLASSLOADER = (classLoader, url) -> {
-        try {
-            if (classLoader.getClass().getName().endsWith("SafetyNetWrapperClassLoader")) {
-                URLClassLoader innerClassLoader =
-                        (URLClassLoader) ReflectionUtils.getField(classLoader, "inner").get();
-                ReflectionUtils.invoke(innerClassLoader, "addURL", url);
-            } else if (classLoader instanceof URLClassLoader) {
-                ReflectionUtils.invoke(classLoader, "addURL", url);
-            } else {
-                throw new UnsupportedOperationException(
-                        "Unsupported ClassLoader: " + classLoader.getClass().getName());
-            }
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to add URL to ClassLoader: " + classLoader.getClass().getName(), e);
-        }
-    };
+    protected static final BiConsumer<ClassLoader, URL> DEFAULT_URL_TO_CLASSLOADER =
+            (classLoader, url) -> {
+                try {
+                    if (classLoader.getClass().getName().endsWith("SafetyNetWrapperClassLoader")) {
+                        URLClassLoader innerClassLoader =
+                                (URLClassLoader)
+                                        ReflectionUtils.getField(classLoader, "inner").get();
+                        ReflectionUtils.invoke(innerClassLoader, "addURL", url);
+                    } else if (classLoader instanceof URLClassLoader) {
+                        ReflectionUtils.invoke(classLoader, "addURL", url);
+                    } else {
+                        throw new UnsupportedOperationException(
+                                "Unsupported ClassLoader: " + classLoader.getClass().getName());
+                    }
+                } catch (Exception e) {
+                    throw new RuntimeException(
+                            "Failed to add URL to ClassLoader: " + classLoader.getClass().getName(),
+                            e);
+                }
+            };
 
     private final Path pluginDir;
     private final Config pluginMappingConfig;

@@ -21,6 +21,7 @@ import org.apache.seatunnel.shade.com.typesafe.config.Config;
 
 import org.apache.seatunnel.api.common.CommonOptions;
 import org.apache.seatunnel.api.common.JobContext;
+import org.apache.seatunnel.api.common.PluginIdentifier;
 import org.apache.seatunnel.api.configuration.ReadonlyConfig;
 import org.apache.seatunnel.api.sink.SaveModeExecuteWrapper;
 import org.apache.seatunnel.api.sink.SaveModeHandler;
@@ -51,6 +52,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static org.apache.seatunnel.api.common.CommonOptions.PLUGIN_NAME;
@@ -94,6 +96,12 @@ public class SinkExecuteProcessor
             throws TaskExecuteException {
         ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
         DatasetTableInfo input = upstreamDataStreams.get(upstreamDataStreams.size() - 1);
+        Function<PluginIdentifier, SeaTunnelSink> createSinkfunction =
+                pluginIdentifier -> {
+                    SeaTunnelSinkPluginDiscovery sinkPluginDiscovery =
+                            new SeaTunnelSinkPluginDiscovery();
+                    return sinkPluginDiscovery.createPluginInstance(pluginIdentifier);
+                };
         for (int i = 0; i < plugins.size(); i++) {
             Config sinkConfig = pluginConfigs.get(i);
             DatasetTableInfo datasetTableInfo =
@@ -121,7 +129,8 @@ public class SinkExecuteProcessor
                                                 catalogTable,
                                                 ReadonlyConfig.fromConfig(sinkConfig),
                                                 classLoader,
-                                                sinkConfig.getString(PLUGIN_NAME.key()));
+                                                sinkConfig.getString(PLUGIN_NAME.key()),
+                                                createSinkfunction);
                                 sinks.put(catalogTable.getTableId().toTablePath(), sink);
                             });
 

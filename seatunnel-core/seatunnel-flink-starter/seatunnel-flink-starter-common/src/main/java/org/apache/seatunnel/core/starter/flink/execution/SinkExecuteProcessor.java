@@ -21,8 +21,8 @@ import org.apache.seatunnel.shade.com.typesafe.config.Config;
 
 import org.apache.seatunnel.api.common.CommonOptions;
 import org.apache.seatunnel.api.common.JobContext;
+import org.apache.seatunnel.api.common.PluginIdentifier;
 import org.apache.seatunnel.api.configuration.ReadonlyConfig;
-import org.apache.seatunnel.api.configuration.util.ConfigValidator;
 import org.apache.seatunnel.api.sink.SaveModeExecuteWrapper;
 import org.apache.seatunnel.api.sink.SaveModeHandler;
 import org.apache.seatunnel.api.sink.SeaTunnelSink;
@@ -34,14 +34,11 @@ import org.apache.seatunnel.api.table.catalog.TablePath;
 import org.apache.seatunnel.api.table.factory.Factory;
 import org.apache.seatunnel.api.table.factory.FactoryUtil;
 import org.apache.seatunnel.api.table.factory.TableSinkFactory;
-import org.apache.seatunnel.api.table.factory.TableSinkFactoryContext;
 import org.apache.seatunnel.api.table.type.SeaTunnelRow;
 import org.apache.seatunnel.api.table.type.SeaTunnelRowType;
 import org.apache.seatunnel.common.exception.SeaTunnelRuntimeException;
-import org.apache.seatunnel.core.starter.enums.PluginType;
 import org.apache.seatunnel.core.starter.exception.TaskExecuteException;
 import org.apache.seatunnel.core.starter.execution.PluginUtil;
-import org.apache.seatunnel.plugin.discovery.PluginIdentifier;
 import org.apache.seatunnel.plugin.discovery.seatunnel.SeaTunnelFactoryDiscovery;
 import org.apache.seatunnel.plugin.discovery.seatunnel.SeaTunnelSinkPluginDiscovery;
 import org.apache.seatunnel.translation.flink.sink.FlinkSink;
@@ -56,6 +53,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static org.apache.seatunnel.api.common.CommonOptions.PLUGIN_NAME;
@@ -98,18 +96,25 @@ public class SinkExecuteProcessor
             throws TaskExecuteException {
         DataStreamTableInfo input = upstreamDataStreams.get(upstreamDataStreams.size() - 1);
         ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
+        Function<PluginIdentifier, SeaTunnelSink> createSinkfunction =
+                pluginIdentifier -> {
+                    SeaTunnelSinkPluginDiscovery sinkPluginDiscovery =
+                            new SeaTunnelSinkPluginDiscovery();
+                    return sinkPluginDiscovery.createPluginInstance(pluginIdentifier);
+                };
         for (int i = 0; i < plugins.size(); i++) {
             Config sinkConfig = pluginConfigs.get(i);
             DataStreamTableInfo stream =
                     fromSourceTable(sinkConfig, upstreamDataStreams).orElse(input);
             Map<TablePath, SeaTunnelSink> sinks = new HashMap<>();
             for (CatalogTable catalogTable : stream.getCatalogTables()) {
-                SeaTunnelSink sink = FactoryUtil.createAndPrepareSink(
-                        catalogTable,
-                        ReadonlyConfig.fromConfig(sinkConfig),
-                        classLoader,
-                        sinkConfig.getString(PLUGIN_NAME.key())
-                );
+                SeaTunnelSink sink =
+                        FactoryUtil.createAndPrepareSink(
+                                catalogTable,
+                                ReadonlyConfig.fromConfig(sinkConfig),
+                                classLoader,
+                                sinkConfig.getString(PLUGIN_NAME.key()),
+                                createSinkfunction);
                 sink.setJobContext(jobContext);
                 SeaTunnelRowType sourceType = catalogTable.getSeaTunnelRowType();
                 sink.setTypeInfo(sourceType);

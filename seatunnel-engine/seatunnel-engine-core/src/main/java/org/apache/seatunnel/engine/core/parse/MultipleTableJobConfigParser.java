@@ -22,6 +22,7 @@ import org.apache.seatunnel.shade.com.google.common.collect.Lists;
 import org.apache.seatunnel.shade.com.typesafe.config.Config;
 
 import org.apache.seatunnel.api.common.CommonOptions;
+import org.apache.seatunnel.api.common.PluginIdentifier;
 import org.apache.seatunnel.api.configuration.ReadonlyConfig;
 import org.apache.seatunnel.api.env.EnvCommonOptions;
 import org.apache.seatunnel.api.sink.SaveModeExecuteLocation;
@@ -60,7 +61,6 @@ import org.apache.seatunnel.engine.core.dag.actions.SourceAction;
 import org.apache.seatunnel.engine.core.dag.actions.TransformAction;
 import org.apache.seatunnel.engine.core.job.ConnectorJarIdentifier;
 import org.apache.seatunnel.engine.core.job.JobPipelineCheckpointData;
-import org.apache.seatunnel.plugin.discovery.PluginIdentifier;
 import org.apache.seatunnel.plugin.discovery.seatunnel.SeaTunnelSinkPluginDiscovery;
 import org.apache.seatunnel.plugin.discovery.seatunnel.SeaTunnelSourcePluginDiscovery;
 import org.apache.seatunnel.plugin.discovery.seatunnel.SeaTunnelTransformPluginDiscovery;
@@ -111,7 +111,6 @@ public class MultipleTableJobConfigParser {
 
     private final ReadonlyConfig envOptions;
 
-    private final JobConfigParser fallbackParser;
     private final boolean isStartWithSavePoint;
     private final List<JobPipelineCheckpointData> pipelineCheckpoints;
 
@@ -161,8 +160,6 @@ public class MultipleTableJobConfigParser {
         this.isStartWithSavePoint = isStartWithSavePoint;
         this.seaTunnelJobConfig = ConfigBuilder.of(Paths.get(jobDefineFilePath), variables);
         this.envOptions = ReadonlyConfig.fromConfig(seaTunnelJobConfig.getConfig("env"));
-        this.fallbackParser =
-                new JobConfigParser(idGenerator, commonPluginJars, this, isStartWithSavePoint);
         this.pipelineCheckpoints = pipelineCheckpoints;
     }
 
@@ -179,8 +176,6 @@ public class MultipleTableJobConfigParser {
         this.isStartWithSavePoint = isStartWithSavePoint;
         this.seaTunnelJobConfig = seaTunnelJobConfig;
         this.envOptions = ReadonlyConfig.fromConfig(seaTunnelJobConfig.getConfig("env"));
-        this.fallbackParser =
-                new JobConfigParser(idGenerator, commonPluginJars, this, isStartWithSavePoint);
         this.pipelineCheckpoints = pipelineCheckpoints;
     }
 
@@ -358,15 +353,28 @@ public class MultipleTableJobConfigParser {
 
         final int parallelism = getParallelism(readonlyConfig);
 
+        Function<PluginIdentifier, SeaTunnelSource> createSourcefunction =
+                pluginIdentifier -> {
+                    SeaTunnelSourcePluginDiscovery sourcePluginDiscovery =
+                            new SeaTunnelSourcePluginDiscovery();
+                    return sourcePluginDiscovery.createPluginInstance(pluginIdentifier);
+                };
+
         Tuple2<SeaTunnelSource<Object, SourceSplit, Serializable>, List<CatalogTable>> tuple2;
         if (isStartWithSavePoint && pipelineCheckpoints != null && !pipelineCheckpoints.isEmpty()) {
             ChangeStreamTableSourceCheckpoint checkpoint =
                     getSourceCheckpoint(configIndex, factoryId);
             tuple2 =
                     FactoryUtil.restoreAndPrepareSource(
-                            readonlyConfig, classLoader, factoryId, checkpoint);
+                            readonlyConfig,
+                            classLoader,
+                            factoryId,
+                            checkpoint,
+                            createSourcefunction);
         } else {
-            tuple2 = FactoryUtil.createAndPrepareSource(readonlyConfig, classLoader, factoryId);
+            tuple2 =
+                    FactoryUtil.createAndPrepareSource(
+                            readonlyConfig, classLoader, factoryId, createSourcefunction);
         }
 
         Set<URL> factoryUrls = new HashSet<>();
@@ -649,9 +657,17 @@ public class MultipleTableJobConfigParser {
             String factoryId,
             int parallelism,
             int configIndex) {
+
+        Function<PluginIdentifier, SeaTunnelSink> createSinkfunction =
+                pluginIdentifier -> {
+                    SeaTunnelSinkPluginDiscovery sinkPluginDiscovery =
+                            new SeaTunnelSinkPluginDiscovery();
+                    return sinkPluginDiscovery.createPluginInstance(pluginIdentifier);
+                };
+
         SeaTunnelSink<?, ?, ?, ?> sink =
                 FactoryUtil.createAndPrepareSink(
-                        catalogTable, readonlyConfig, classLoader, factoryId);
+                        catalogTable, readonlyConfig, classLoader, factoryId, createSinkfunction);
         sink.setJobContext(jobConfig.getJobContext());
         SinkConfig actionConfig = new SinkConfig(catalogTable.getTableId().toTablePath());
         long id = idGenerator.getNextId();

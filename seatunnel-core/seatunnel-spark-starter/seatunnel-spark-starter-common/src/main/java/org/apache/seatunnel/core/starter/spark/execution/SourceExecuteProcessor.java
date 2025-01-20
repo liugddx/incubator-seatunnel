@@ -23,6 +23,7 @@ import org.apache.seatunnel.shade.com.typesafe.config.ConfigValue;
 
 import org.apache.seatunnel.api.common.CommonOptions;
 import org.apache.seatunnel.api.common.JobContext;
+import org.apache.seatunnel.api.common.PluginIdentifier;
 import org.apache.seatunnel.api.configuration.ReadonlyConfig;
 import org.apache.seatunnel.api.source.SeaTunnelSource;
 import org.apache.seatunnel.api.source.SourceSplit;
@@ -31,7 +32,6 @@ import org.apache.seatunnel.api.table.factory.FactoryUtil;
 import org.apache.seatunnel.common.Constants;
 import org.apache.seatunnel.common.utils.SerializationUtils;
 import org.apache.seatunnel.core.starter.execution.SourceTableInfo;
-import org.apache.seatunnel.plugin.discovery.PluginIdentifier;
 import org.apache.seatunnel.plugin.discovery.seatunnel.SeaTunnelSourcePluginDiscovery;
 import org.apache.seatunnel.translation.spark.execution.DatasetTableInfo;
 
@@ -48,6 +48,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 
 import static org.apache.seatunnel.api.common.CommonOptions.PLUGIN_NAME;
 import static org.apache.seatunnel.api.common.CommonOptions.PLUGIN_OUTPUT;
@@ -114,6 +115,9 @@ public class SourceExecuteProcessor extends SparkAbstractPluginExecuteProcessor<
     protected List<SourceTableInfo> initializePlugins(List<? extends Config> pluginConfigs) {
         SeaTunnelSourcePluginDiscovery sourcePluginDiscovery = new SeaTunnelSourcePluginDiscovery();
 
+        Function<PluginIdentifier, SeaTunnelSource> createSourcefunction =
+                sourcePluginDiscovery::createPluginInstance;
+
         List<SourceTableInfo> sources = new ArrayList<>();
         Set<URL> jars = new HashSet<>();
         for (Config sourceConfig : pluginConfigs) {
@@ -126,7 +130,8 @@ public class SourceExecuteProcessor extends SparkAbstractPluginExecuteProcessor<
                     FactoryUtil.createAndPrepareSource(
                             ReadonlyConfig.fromConfig(sourceConfig),
                             Thread.currentThread().getContextClassLoader(),
-                            pluginIdentifier.getPluginName());
+                            pluginIdentifier.getPluginName(),
+                            createSourcefunction);
             sources.add(new SourceTableInfo(source._1(), source._2()));
         }
         sparkRuntimeEnvironment.registerPlugin(new ArrayList<>(jars));
