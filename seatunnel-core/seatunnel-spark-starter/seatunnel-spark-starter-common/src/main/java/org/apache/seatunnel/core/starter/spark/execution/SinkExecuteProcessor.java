@@ -46,6 +46,8 @@ import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SaveMode;
 
+import lombok.extern.slf4j.Slf4j;
+
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -58,6 +60,7 @@ import java.util.stream.Collectors;
 import static org.apache.seatunnel.api.common.CommonOptions.PLUGIN_NAME;
 import static org.apache.seatunnel.api.common.SeaTunnelAPIErrorCode.HANDLE_SAVE_MODE_FAILED;
 
+@Slf4j
 public class SinkExecuteProcessor
         extends SparkAbstractPluginExecuteProcessor<Optional<? extends Factory>> {
     private static final String PLUGIN_TYPE = PluginType.SINK.getType();
@@ -133,9 +136,8 @@ public class SinkExecuteProcessor
                                                 createSinkfunction);
                                 sinks.put(catalogTable.getTableId().toTablePath(), sink);
                             });
-
             SeaTunnelSink sink =
-                    FactoryUtil.createMultiTableSink(
+                    tryGenerateMultiTableSink(
                             sinks, ReadonlyConfig.fromConfig(sinkConfig), classLoader);
             sink.setJobContext(jobContext);
             // TODO modify checkpoint location
