@@ -51,6 +51,7 @@ import java.util.function.Function;
 
 import static org.apache.seatunnel.api.common.CommonOptions.PLUGIN_NAME;
 import static org.apache.seatunnel.api.common.CommonOptions.PLUGIN_OUTPUT;
+import static org.apache.seatunnel.core.starter.execution.PluginUtil.ensureJobModeMatch;
 
 @Slf4j
 @SuppressWarnings("unchecked,rawtypes")
@@ -119,6 +120,9 @@ public class SourceExecuteProcessor extends FlinkAbstractPluginExecuteProcessor<
                             Thread.currentThread().getContextClassLoader(),
                             pluginIdentifier.getPluginName(),
                             createSourcefunction);
+
+            source._1().setJobContext(jobContext);
+            ensureJobModeMatch(jobContext, source._1());
 
             sources.add(new SourceTableInfo(source._1(), source._2()));
         }
