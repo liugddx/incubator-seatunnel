@@ -137,6 +137,7 @@ public class SinkExecuteProcessor
             SeaTunnelSink sink =
                     FactoryUtil.createMultiTableSink(
                             sinks, ReadonlyConfig.fromConfig(sinkConfig), classLoader);
+            sink.setJobContext(jobContext);
 
             // TODO modify checkpoint location
             handleSaveMode(sink);
