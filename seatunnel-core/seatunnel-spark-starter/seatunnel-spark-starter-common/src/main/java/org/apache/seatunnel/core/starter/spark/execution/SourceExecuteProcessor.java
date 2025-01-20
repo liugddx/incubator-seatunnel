@@ -116,7 +116,7 @@ public class SourceExecuteProcessor extends SparkAbstractPluginExecuteProcessor<
     protected List<SourceTableInfo> initializePlugins(List<? extends Config> pluginConfigs) {
         SeaTunnelSourcePluginDiscovery sourcePluginDiscovery = new SeaTunnelSourcePluginDiscovery();
 
-        Function<PluginIdentifier, SeaTunnelSource> createSourcefunction =
+        Function<PluginIdentifier, SeaTunnelSource> fallbackCreateSource =
                 sourcePluginDiscovery::createPluginInstance;
 
         List<SourceTableInfo> sources = new ArrayList<>();
@@ -132,7 +132,8 @@ public class SourceExecuteProcessor extends SparkAbstractPluginExecuteProcessor<
                             ReadonlyConfig.fromConfig(sourceConfig),
                             Thread.currentThread().getContextClassLoader(),
                             pluginIdentifier.getPluginName(),
-                            createSourcefunction);
+                            fallbackCreateSource,
+                            null);
 
             source._1().setJobContext(jobContext);
             ensureJobModeMatch(jobContext, source._1());

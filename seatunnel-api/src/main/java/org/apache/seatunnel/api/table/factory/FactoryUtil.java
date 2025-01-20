@@ -76,9 +76,10 @@ public final class FactoryUtil {
                     ReadonlyConfig options,
                     ClassLoader classLoader,
                     String factoryIdentifier,
-                    Function<PluginIdentifier, SeaTunnelSource> createSourceFunction) {
+                    Function<PluginIdentifier, SeaTunnelSource> fallbackCreateSource,
+                    TableSourceFactory factory) {
         return restoreAndPrepareSource(
-                options, classLoader, factoryIdentifier, null, createSourceFunction);
+                options, classLoader, factoryIdentifier, null, fallbackCreateSource, factory);
     }
 
     public static <T, SplitT extends SourceSplit, StateT extends Serializable>
@@ -87,11 +88,13 @@ public final class FactoryUtil {
                     ClassLoader classLoader,
                     String factoryIdentifier,
                     ChangeStreamTableSourceCheckpoint checkpoint,
-                    Function<PluginIdentifier, SeaTunnelSource> createSourceFunction) {
+                    Function<PluginIdentifier, SeaTunnelSource> fallbackCreateSource,
+                    TableSourceFactory factory) {
 
         try {
-            final TableSourceFactory factory =
-                    discoverFactory(classLoader, TableSourceFactory.class, factoryIdentifier);
+            if (factory == null) {
+                factory = discoverFactory(classLoader, TableSourceFactory.class, factoryIdentifier);
+            }
             SeaTunnelSource<T, SplitT, StateT> source;
             final String factoryId = options.get(PLUGIN_NAME);
 
@@ -104,7 +107,7 @@ public final class FactoryUtil {
 
             if (fallback) {
                 source =
-                        createSourceFunction.apply(
+                        fallbackCreateSource.apply(
                                 PluginIdentifier.of("seatunnel", "source", factoryId));
                 source.prepare(options.toConfig());
 
@@ -182,17 +185,21 @@ public final class FactoryUtil {
                     ReadonlyConfig config,
                     ClassLoader classLoader,
                     String factoryIdentifier,
-                    Function<PluginIdentifier, SeaTunnelSink> createSinkFunction) {
+                    Function<PluginIdentifier, SeaTunnelSink> fallbackCreateSink,
+                    TableSinkFactory<IN, StateT, CommitInfoT, AggregatedCommitInfoT>
+                            tableSinkFactory) {
         try {
-            TableSinkFactory<IN, StateT, CommitInfoT, AggregatedCommitInfoT> factory =
-                    discoverFactory(classLoader, TableSinkFactory.class, factoryIdentifier);
+            if (tableSinkFactory == null) {
+                tableSinkFactory =
+                        discoverFactory(classLoader, TableSinkFactory.class, factoryIdentifier);
+            }
             TableSinkFactoryContext context =
                     TableSinkFactoryContext.replacePlaceholderAndCreate(
                             catalogTable,
                             config,
                             classLoader,
-                            factory.excludeTablePlaceholderReplaceKeys());
-            ConfigValidator.of(context.getOptions()).validate(factory.optionRule());
+                            tableSinkFactory.excludeTablePlaceholderReplaceKeys());
+            ConfigValidator.of(context.getOptions()).validate(tableSinkFactory.optionRule());
 
             final String factoryId = config.get(PLUGIN_NAME);
 
@@ -204,7 +211,7 @@ public final class FactoryUtil {
                             (sinkFactory) -> sinkFactory.createSink(null));
             if (fallback) {
                 SeaTunnelSink sink =
-                        createSinkFunction.apply(
+                        fallbackCreateSink.apply(
                                 PluginIdentifier.of("seatunnel", "sink", factoryId));
                 sink.prepare(config.toConfig());
                 sink.setTypeInfo(catalogTable.getSeaTunnelRowType());
@@ -218,7 +225,7 @@ public final class FactoryUtil {
                     catalogTable.getTablePath().getDatabaseName(),
                     catalogTable.getTablePath().getSchemaName(),
                     catalogTable.getTablePath().getTableName());
-            return factory.createSink(context).createSink();
+            return tableSinkFactory.createSink(context).createSink();
         } catch (Throwable t) {
             throw new FactoryException(
                     String.format(

@@ -97,14 +97,11 @@ public class SinkExecuteProcessor
     @Override
     public List<DatasetTableInfo> execute(List<DatasetTableInfo> upstreamDataStreams)
             throws TaskExecuteException {
+        SeaTunnelSinkPluginDiscovery sinkPluginDiscovery = new SeaTunnelSinkPluginDiscovery();
         ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
         DatasetTableInfo input = upstreamDataStreams.get(upstreamDataStreams.size() - 1);
-        Function<PluginIdentifier, SeaTunnelSink> createSinkfunction =
-                pluginIdentifier -> {
-                    SeaTunnelSinkPluginDiscovery sinkPluginDiscovery =
-                            new SeaTunnelSinkPluginDiscovery();
-                    return sinkPluginDiscovery.createPluginInstance(pluginIdentifier);
-                };
+        Function<PluginIdentifier, SeaTunnelSink> fallbackCreateSink =
+                sinkPluginDiscovery::createPluginInstance;
         for (int i = 0; i < plugins.size(); i++) {
             Config sinkConfig = pluginConfigs.get(i);
             DatasetTableInfo datasetTableInfo =
@@ -133,7 +130,8 @@ public class SinkExecuteProcessor
                                                 ReadonlyConfig.fromConfig(sinkConfig),
                                                 classLoader,
                                                 sinkConfig.getString(PLUGIN_NAME.key()),
-                                                createSinkfunction);
+                                                fallbackCreateSink,
+                                                null);
                                 sink.setJobContext(jobContext);
                                 sinks.put(catalogTable.getTableId().toTablePath(), sink);
                             });

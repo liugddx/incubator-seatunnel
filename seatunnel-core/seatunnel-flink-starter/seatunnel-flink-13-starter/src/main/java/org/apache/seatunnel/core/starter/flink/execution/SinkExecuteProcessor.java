@@ -92,15 +92,14 @@ public class SinkExecuteProcessor
     @Override
     public List<DataStreamTableInfo> execute(List<DataStreamTableInfo> upstreamDataStreams)
             throws TaskExecuteException {
+        SeaTunnelSinkPluginDiscovery sinkPluginDiscovery =
+                new SeaTunnelSinkPluginDiscovery(ADD_URL_TO_CLASSLOADER);
         DataStreamTableInfo input = upstreamDataStreams.get(upstreamDataStreams.size() - 1);
         ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
-        Function<PluginIdentifier, SeaTunnelSink> createSinkfunction =
-                pluginIdentifier -> {
-                    SeaTunnelSinkPluginDiscovery sinkPluginDiscovery =
-                            new SeaTunnelSinkPluginDiscovery();
-                    return sinkPluginDiscovery.createPluginInstance(pluginIdentifier);
-                };
+        Function<PluginIdentifier, SeaTunnelSink> fallbackCreateSink =
+                sinkPluginDiscovery::createPluginInstance;
         for (int i = 0; i < plugins.size(); i++) {
+            Optional<? extends Factory> factory = plugins.get(i);
             Config sinkConfig = pluginConfigs.get(i);
             DataStreamTableInfo stream =
                     fromSourceTable(sinkConfig, upstreamDataStreams).orElse(input);
@@ -112,7 +111,8 @@ public class SinkExecuteProcessor
                                 ReadonlyConfig.fromConfig(sinkConfig),
                                 classLoader,
                                 sinkConfig.getString(PLUGIN_NAME.key()),
-                                createSinkfunction);
+                                fallbackCreateSink,
+                                ((TableSinkFactory) (factory.orElse(null))));
                 sink.setJobContext(jobContext);
                 handleSaveMode(sink);
                 TableIdentifier tableId = catalogTable.getTableId();

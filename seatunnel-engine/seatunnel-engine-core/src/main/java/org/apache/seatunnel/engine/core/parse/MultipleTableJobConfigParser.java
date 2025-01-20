@@ -353,7 +353,7 @@ public class MultipleTableJobConfigParser {
 
         final int parallelism = getParallelism(readonlyConfig);
 
-        Function<PluginIdentifier, SeaTunnelSource> createSourcefunction =
+        Function<PluginIdentifier, SeaTunnelSource> fallbackCreateSource =
                 pluginIdentifier -> {
                     SeaTunnelSourcePluginDiscovery sourcePluginDiscovery =
                             new SeaTunnelSourcePluginDiscovery();
@@ -370,11 +370,12 @@ public class MultipleTableJobConfigParser {
                             classLoader,
                             factoryId,
                             checkpoint,
-                            createSourcefunction);
+                            fallbackCreateSource,
+                            null);
         } else {
             tuple2 =
                     FactoryUtil.createAndPrepareSource(
-                            readonlyConfig, classLoader, factoryId, createSourcefunction);
+                            readonlyConfig, classLoader, factoryId, fallbackCreateSource);
         }
 
         Set<URL> factoryUrls = new HashSet<>();
@@ -658,7 +659,7 @@ public class MultipleTableJobConfigParser {
             int parallelism,
             int configIndex) {
 
-        Function<PluginIdentifier, SeaTunnelSink> createSinkfunction =
+        Function<PluginIdentifier, SeaTunnelSink> fallbackCreateSink =
                 pluginIdentifier -> {
                     SeaTunnelSinkPluginDiscovery sinkPluginDiscovery =
                             new SeaTunnelSinkPluginDiscovery();
@@ -667,7 +668,12 @@ public class MultipleTableJobConfigParser {
 
         SeaTunnelSink<?, ?, ?, ?> sink =
                 FactoryUtil.createAndPrepareSink(
-                        catalogTable, readonlyConfig, classLoader, factoryId, createSinkfunction);
+                        catalogTable,
+                        readonlyConfig,
+                        classLoader,
+                        factoryId,
+                        fallbackCreateSink,
+                        null);
         sink.setJobContext(jobConfig.getJobContext());
         SinkConfig actionConfig = new SinkConfig(catalogTable.getTableId().toTablePath());
         long id = idGenerator.getNextId();

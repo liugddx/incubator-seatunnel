@@ -28,9 +28,11 @@ import org.apache.seatunnel.api.source.SeaTunnelSource;
 import org.apache.seatunnel.api.source.SourceSplit;
 import org.apache.seatunnel.api.table.catalog.CatalogTable;
 import org.apache.seatunnel.api.table.factory.FactoryUtil;
+import org.apache.seatunnel.api.table.factory.TableSourceFactory;
 import org.apache.seatunnel.api.table.type.SeaTunnelRow;
 import org.apache.seatunnel.core.starter.enums.PluginType;
 import org.apache.seatunnel.core.starter.execution.SourceTableInfo;
+import org.apache.seatunnel.plugin.discovery.seatunnel.SeaTunnelFactoryDiscovery;
 import org.apache.seatunnel.plugin.discovery.seatunnel.SeaTunnelSourcePluginDiscovery;
 import org.apache.seatunnel.translation.flink.source.FlinkSource;
 
@@ -99,10 +101,11 @@ public class SourceExecuteProcessor extends FlinkAbstractPluginExecuteProcessor<
     @Override
     protected List<SourceTableInfo> initializePlugins(
             List<URL> jarPaths, List<? extends Config> pluginConfigs) {
+        SeaTunnelFactoryDiscovery factoryDiscovery =
+                new SeaTunnelFactoryDiscovery(TableSourceFactory.class, ADD_URL_TO_CLASSLOADER);
         SeaTunnelSourcePluginDiscovery sourcePluginDiscovery =
                 new SeaTunnelSourcePluginDiscovery(ADD_URL_TO_CLASSLOADER);
-
-        Function<PluginIdentifier, SeaTunnelSource> createSourcefunction =
+        Function<PluginIdentifier, SeaTunnelSource> fallbackCreateSource =
                 sourcePluginDiscovery::createPluginInstance;
 
         List<SourceTableInfo> sources = new ArrayList<>();
@@ -119,7 +122,11 @@ public class SourceExecuteProcessor extends FlinkAbstractPluginExecuteProcessor<
                             ReadonlyConfig.fromConfig(sourceConfig),
                             Thread.currentThread().getContextClassLoader(),
                             pluginIdentifier.getPluginName(),
-                            createSourcefunction);
+                            fallbackCreateSource,
+                            (TableSourceFactory)
+                                    factoryDiscovery
+                                            .createOptionalPluginInstance(pluginIdentifier)
+                                            .orElse(null));
 
             source._1().setJobContext(jobContext);
             ensureJobModeMatch(jobContext, source._1());

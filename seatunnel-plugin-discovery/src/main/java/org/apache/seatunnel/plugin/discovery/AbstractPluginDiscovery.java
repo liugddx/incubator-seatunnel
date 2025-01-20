@@ -76,24 +76,12 @@ public abstract class AbstractPluginDiscovery<T> implements PluginDiscovery<T> {
      * Add jar url to classloader. The different engine should have different logic to add url into
      * their own classloader
      */
-    protected static final BiConsumer<ClassLoader, URL> DEFAULT_URL_TO_CLASSLOADER =
+    private static final BiConsumer<ClassLoader, URL> DEFAULT_URL_TO_CLASSLOADER =
             (classLoader, url) -> {
-                try {
-                    if (classLoader.getClass().getName().endsWith("SafetyNetWrapperClassLoader")) {
-                        URLClassLoader innerClassLoader =
-                                (URLClassLoader)
-                                        ReflectionUtils.getField(classLoader, "inner").get();
-                        ReflectionUtils.invoke(innerClassLoader, "addURL", url);
-                    } else if (classLoader instanceof URLClassLoader) {
-                        ReflectionUtils.invoke(classLoader, "addURL", url);
-                    } else {
-                        throw new UnsupportedOperationException(
-                                "Unsupported ClassLoader: " + classLoader.getClass().getName());
-                    }
-                } catch (Exception e) {
-                    throw new RuntimeException(
-                            "Failed to add URL to ClassLoader: " + classLoader.getClass().getName(),
-                            e);
+                if (classLoader instanceof URLClassLoader) {
+                    ReflectionUtils.invoke(classLoader, "addURL", url);
+                } else {
+                    throw new UnsupportedOperationException("can't support custom load jar");
                 }
             };
 
