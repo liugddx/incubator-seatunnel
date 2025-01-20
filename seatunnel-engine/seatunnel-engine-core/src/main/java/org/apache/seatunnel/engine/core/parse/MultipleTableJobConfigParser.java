@@ -375,7 +375,7 @@ public class MultipleTableJobConfigParser {
         } else {
             tuple2 =
                     FactoryUtil.createAndPrepareSource(
-                            readonlyConfig, classLoader, factoryId, fallbackCreateSource);
+                            readonlyConfig, classLoader, factoryId, fallbackCreateSource, null);
         }
 
         Set<URL> factoryUrls = new HashSet<>();
