@@ -430,8 +430,6 @@ public final class FactoryUtil {
             if (e instanceof UnsupportedOperationException
                     && "The Factory has not been implemented and the deprecated Plugin will be used."
                             .equals(e.getMessage())) {
-                log.warn(
-                        "The Factory has not been implemented and the deprecated Plugin will be used.");
                 return true;
             }
             log.debug(ExceptionUtils.getMessage(e));
