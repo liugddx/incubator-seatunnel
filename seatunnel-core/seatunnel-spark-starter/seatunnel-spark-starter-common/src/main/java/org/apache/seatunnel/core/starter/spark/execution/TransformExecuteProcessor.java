@@ -30,9 +30,6 @@ import org.apache.seatunnel.api.transform.SeaTunnelFlatMapTransform;
 import org.apache.seatunnel.api.transform.SeaTunnelMapTransform;
 import org.apache.seatunnel.api.transform.SeaTunnelTransform;
 import org.apache.seatunnel.core.starter.exception.TaskExecuteException;
-import org.apache.seatunnel.core.starter.execution.PluginUtil;
-import org.apache.seatunnel.plugin.discovery.seatunnel.SeaTunnelFactoryDiscovery;
-import org.apache.seatunnel.plugin.discovery.seatunnel.SeaTunnelTransformPluginDiscovery;
 import org.apache.seatunnel.translation.spark.execution.DatasetTableInfo;
 import org.apache.seatunnel.translation.spark.execution.MultiTableManager;
 
@@ -56,7 +53,9 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import static org.apache.seatunnel.api.common.CommonOptions.PLUGIN_NAME;
 import static org.apache.seatunnel.api.common.CommonOptions.PLUGIN_OUTPUT;
+import static org.apache.seatunnel.api.table.factory.FactoryUtil.discoverOptionalFactory;
 
 @Slf4j
 public class TransformExecuteProcessor
@@ -71,25 +70,19 @@ public class TransformExecuteProcessor
 
     @Override
     protected List<TableTransformFactory> initializePlugins(List<? extends Config> pluginConfigs) {
-        SeaTunnelTransformPluginDiscovery transformPluginDiscovery =
-                new SeaTunnelTransformPluginDiscovery();
 
-        SeaTunnelFactoryDiscovery factoryDiscovery =
-                new SeaTunnelFactoryDiscovery(TableTransformFactory.class);
         List<URL> pluginJars = new ArrayList<>();
         List<TableTransformFactory> transforms =
                 pluginConfigs.stream()
                         .map(
                                 transformConfig ->
-                                        PluginUtil.createTransformFactory(
-                                                factoryDiscovery,
-                                                transformPluginDiscovery,
-                                                transformConfig,
-                                                new ArrayList<>()))
+                                        discoverOptionalFactory(
+                                                classLoader,
+                                                TableTransformFactory.class,
+                                                transformConfig.getString(PLUGIN_NAME.key())))
                         .distinct()
                         .filter(Optional::isPresent)
                         .map(Optional::get)
-                        .map(e -> (TableTransformFactory) e)
                         .collect(Collectors.toList());
         sparkRuntimeEnvironment.registerPlugin(pluginJars);
         return transforms;

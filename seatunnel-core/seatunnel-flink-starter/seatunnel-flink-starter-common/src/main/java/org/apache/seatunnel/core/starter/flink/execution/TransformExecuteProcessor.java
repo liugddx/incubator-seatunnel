@@ -29,9 +29,6 @@ import org.apache.seatunnel.api.transform.SeaTunnelFlatMapTransform;
 import org.apache.seatunnel.api.transform.SeaTunnelMapTransform;
 import org.apache.seatunnel.api.transform.SeaTunnelTransform;
 import org.apache.seatunnel.core.starter.exception.TaskExecuteException;
-import org.apache.seatunnel.core.starter.execution.PluginUtil;
-import org.apache.seatunnel.plugin.discovery.seatunnel.SeaTunnelFactoryDiscovery;
-import org.apache.seatunnel.plugin.discovery.seatunnel.SeaTunnelTransformPluginDiscovery;
 
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.flink.api.common.functions.FlatMapFunction;
@@ -49,7 +46,9 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import static org.apache.seatunnel.api.common.CommonOptions.PLUGIN_NAME;
 import static org.apache.seatunnel.api.common.CommonOptions.PLUGIN_OUTPUT;
+import static org.apache.seatunnel.api.table.factory.FactoryUtil.discoverOptionalFactory;
 
 @SuppressWarnings("unchecked,rawtypes")
 public class TransformExecuteProcessor
@@ -66,23 +65,16 @@ public class TransformExecuteProcessor
     @Override
     protected List<TableTransformFactory> initializePlugins(
             List<URL> jarPaths, List<? extends Config> pluginConfigs) {
-
-        SeaTunnelFactoryDiscovery factoryDiscovery =
-                new SeaTunnelFactoryDiscovery(TableTransformFactory.class, ADD_URL_TO_CLASSLOADER);
-        SeaTunnelTransformPluginDiscovery transformPluginDiscovery =
-                new SeaTunnelTransformPluginDiscovery();
         return pluginConfigs.stream()
                 .map(
                         transformConfig ->
-                                PluginUtil.createTransformFactory(
-                                        factoryDiscovery,
-                                        transformPluginDiscovery,
-                                        transformConfig,
-                                        jarPaths))
+                                discoverOptionalFactory(
+                                        classLoader,
+                                        TableTransformFactory.class,
+                                        transformConfig.getString(PLUGIN_NAME.key())))
                 .distinct()
                 .filter(Optional::isPresent)
                 .map(Optional::get)
-                .map(e -> (TableTransformFactory) e)
                 .collect(Collectors.toList());
     }
 

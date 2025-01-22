@@ -57,6 +57,7 @@ public abstract class FlinkAbstractPluginExecuteProcessor<T>
     protected JobContext jobContext;
     protected final List<T> plugins;
     protected final Config envConfig;
+    protected final ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
 
     protected FlinkAbstractPluginExecuteProcessor(
             List<URL> jarPaths,

@@ -49,6 +49,7 @@ public abstract class SparkAbstractPluginExecuteProcessor<T>
     protected final JobContext jobContext;
     protected final List<T> plugins;
     protected static final String ENGINE_TYPE = "seatunnel";
+    protected final ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
 
     protected SparkAbstractPluginExecuteProcessor(
             SparkRuntimeEnvironment sparkRuntimeEnvironment,
