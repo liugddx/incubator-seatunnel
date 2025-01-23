@@ -36,8 +36,6 @@ import static org.apache.seatunnel.api.common.CommonOptions.PLUGIN_INPUT;
 public abstract class FlinkAbstractPluginExecuteProcessor<T>
         implements PluginExecuteProcessor<DataStreamTableInfo, FlinkRuntimeEnvironment> {
 
-    protected static final String ENGINE_TYPE = "seatunnel";
-
     protected static final BiConsumer<ClassLoader, URL> ADD_URL_TO_CLASSLOADER =
             (classLoader, url) -> {
                 if (classLoader.getClass().getName().endsWith("SafetyNetWrapperClassLoader")) {

@@ -31,6 +31,8 @@ import org.apache.seatunnel.api.table.type.SeaTunnelRow;
 import org.apache.seatunnel.api.transform.SeaTunnelFlatMapTransform;
 import org.apache.seatunnel.api.transform.SeaTunnelMapTransform;
 import org.apache.seatunnel.api.transform.SeaTunnelTransform;
+import org.apache.seatunnel.common.constants.PluginType;
+import org.apache.seatunnel.core.starter.enums.EngineType;
 import org.apache.seatunnel.core.starter.exception.TaskExecuteException;
 import org.apache.seatunnel.plugin.discovery.seatunnel.SeaTunnelTransformPluginDiscovery;
 import org.apache.seatunnel.translation.spark.execution.DatasetTableInfo;
@@ -85,8 +87,9 @@ public class TransformExecuteProcessor
                                             transformPluginDiscovery.getPluginJarPaths(
                                                     Lists.newArrayList(
                                                             PluginIdentifier.of(
-                                                                    ENGINE_TYPE,
-                                                                    "transform",
+                                                                    EngineType.SEATUNNEL
+                                                                            .getEngine(),
+                                                                    PluginType.TRANSFORM.getType(),
                                                                     transformConfig.getString(
                                                                             PLUGIN_NAME.key())))));
                                     return discoverOptionalFactory(

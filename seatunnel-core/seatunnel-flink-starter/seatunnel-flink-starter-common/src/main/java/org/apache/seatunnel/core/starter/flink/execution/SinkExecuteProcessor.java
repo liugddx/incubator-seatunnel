@@ -38,6 +38,7 @@ import org.apache.seatunnel.api.table.factory.TableSinkFactory;
 import org.apache.seatunnel.api.table.type.SeaTunnelRow;
 import org.apache.seatunnel.common.constants.PluginType;
 import org.apache.seatunnel.common.exception.SeaTunnelRuntimeException;
+import org.apache.seatunnel.core.starter.enums.EngineType;
 import org.apache.seatunnel.core.starter.exception.TaskExecuteException;
 import org.apache.seatunnel.plugin.discovery.seatunnel.SeaTunnelFactoryDiscovery;
 import org.apache.seatunnel.plugin.discovery.seatunnel.SeaTunnelSinkPluginDiscovery;
@@ -86,7 +87,7 @@ public class SinkExecuteProcessor
                         (TableSinkFactory)
                                 factoryDiscovery.createPluginInstance(
                                         PluginIdentifier.of(
-                                                ENGINE_TYPE,
+                                                EngineType.SEATUNNEL.getEngine(),
                                                 PluginType.SINK.getType(),
                                                 pluginName));
 
@@ -97,7 +98,7 @@ public class SinkExecuteProcessor
                                     sinkPluginDiscovery.getPluginJarPaths(
                                             Lists.newArrayList(
                                                     PluginIdentifier.of(
-                                                            ENGINE_TYPE,
+                                                            EngineType.SEATUNNEL.getEngine(),
                                                             PluginType.SINK.getType(),
                                                             sinkConfig.getString(
                                                                     PLUGIN_NAME.key())))));
