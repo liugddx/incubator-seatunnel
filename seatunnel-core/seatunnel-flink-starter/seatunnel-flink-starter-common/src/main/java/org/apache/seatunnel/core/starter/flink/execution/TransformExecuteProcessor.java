@@ -17,9 +17,11 @@
 
 package org.apache.seatunnel.core.starter.flink.execution;
 
+import org.apache.seatunnel.shade.com.google.common.collect.Lists;
 import org.apache.seatunnel.shade.com.typesafe.config.Config;
 
 import org.apache.seatunnel.api.common.JobContext;
+import org.apache.seatunnel.api.common.PluginIdentifier;
 import org.apache.seatunnel.api.configuration.ReadonlyConfig;
 import org.apache.seatunnel.api.configuration.util.ConfigValidator;
 import org.apache.seatunnel.api.table.factory.TableTransformFactory;
@@ -29,6 +31,8 @@ import org.apache.seatunnel.api.transform.SeaTunnelFlatMapTransform;
 import org.apache.seatunnel.api.transform.SeaTunnelMapTransform;
 import org.apache.seatunnel.api.transform.SeaTunnelTransform;
 import org.apache.seatunnel.core.starter.exception.TaskExecuteException;
+import org.apache.seatunnel.plugin.discovery.seatunnel.SeaTunnelFactoryDiscovery;
+import org.apache.seatunnel.plugin.discovery.seatunnel.SeaTunnelTransformPluginDiscovery;
 
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.flink.api.common.functions.FlatMapFunction;
@@ -65,13 +69,34 @@ public class TransformExecuteProcessor
     @Override
     protected List<TableTransformFactory> initializePlugins(
             List<URL> jarPaths, List<? extends Config> pluginConfigs) {
+        SeaTunnelTransformPluginDiscovery transformPluginDiscovery =
+                new SeaTunnelTransformPluginDiscovery();
+        SeaTunnelFactoryDiscovery factoryDiscovery =
+                new SeaTunnelFactoryDiscovery(TableTransformFactory.class, ADD_URL_TO_CLASSLOADER);
         return pluginConfigs.stream()
                 .map(
-                        transformConfig ->
-                                discoverOptionalFactory(
-                                        classLoader,
-                                        TableTransformFactory.class,
-                                        transformConfig.getString(PLUGIN_NAME.key())))
+                        transformConfig -> {
+                            jarPaths.addAll(
+                                    transformPluginDiscovery.getPluginJarPaths(
+                                            Lists.newArrayList(
+                                                    PluginIdentifier.of(
+                                                            ENGINE_TYPE,
+                                                            "transform",
+                                                            transformConfig.getString(
+                                                                    PLUGIN_NAME.key())))));
+                            return discoverOptionalFactory(
+                                    classLoader,
+                                    TableTransformFactory.class,
+                                    transformConfig.getString(PLUGIN_NAME.key()),
+                                    () ->
+                                            factoryDiscovery.loadPluginInstance(
+                                                    PluginIdentifier.of(
+                                                            ENGINE_TYPE,
+                                                            "transform",
+                                                            transformConfig.getString(
+                                                                    PLUGIN_NAME.key())),
+                                                    classLoader));
+                        })
                 .distinct()
                 .filter(Optional::isPresent)
                 .map(Optional::get)

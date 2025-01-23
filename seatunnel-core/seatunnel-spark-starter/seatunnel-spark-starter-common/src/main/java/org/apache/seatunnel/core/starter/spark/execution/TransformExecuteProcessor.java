@@ -17,9 +17,11 @@
 
 package org.apache.seatunnel.core.starter.spark.execution;
 
+import org.apache.seatunnel.shade.com.google.common.collect.Lists;
 import org.apache.seatunnel.shade.com.typesafe.config.Config;
 
 import org.apache.seatunnel.api.common.JobContext;
+import org.apache.seatunnel.api.common.PluginIdentifier;
 import org.apache.seatunnel.api.configuration.ReadonlyConfig;
 import org.apache.seatunnel.api.configuration.util.ConfigValidator;
 import org.apache.seatunnel.api.table.catalog.CatalogTable;
@@ -30,6 +32,7 @@ import org.apache.seatunnel.api.transform.SeaTunnelFlatMapTransform;
 import org.apache.seatunnel.api.transform.SeaTunnelMapTransform;
 import org.apache.seatunnel.api.transform.SeaTunnelTransform;
 import org.apache.seatunnel.core.starter.exception.TaskExecuteException;
+import org.apache.seatunnel.plugin.discovery.seatunnel.SeaTunnelTransformPluginDiscovery;
 import org.apache.seatunnel.translation.spark.execution.DatasetTableInfo;
 import org.apache.seatunnel.translation.spark.execution.MultiTableManager;
 
@@ -71,15 +74,26 @@ public class TransformExecuteProcessor
     @Override
     protected List<TableTransformFactory> initializePlugins(List<? extends Config> pluginConfigs) {
 
+        SeaTunnelTransformPluginDiscovery transformPluginDiscovery =
+                new SeaTunnelTransformPluginDiscovery();
         List<URL> pluginJars = new ArrayList<>();
         List<TableTransformFactory> transforms =
                 pluginConfigs.stream()
                         .map(
-                                transformConfig ->
-                                        discoverOptionalFactory(
-                                                classLoader,
-                                                TableTransformFactory.class,
-                                                transformConfig.getString(PLUGIN_NAME.key())))
+                                transformConfig -> {
+                                    pluginJars.addAll(
+                                            transformPluginDiscovery.getPluginJarPaths(
+                                                    Lists.newArrayList(
+                                                            PluginIdentifier.of(
+                                                                    ENGINE_TYPE,
+                                                                    "transform",
+                                                                    transformConfig.getString(
+                                                                            PLUGIN_NAME.key())))));
+                                    return discoverOptionalFactory(
+                                            classLoader,
+                                            TableTransformFactory.class,
+                                            transformConfig.getString(PLUGIN_NAME.key()));
+                                })
                         .distinct()
                         .filter(Optional::isPresent)
                         .map(Optional::get)

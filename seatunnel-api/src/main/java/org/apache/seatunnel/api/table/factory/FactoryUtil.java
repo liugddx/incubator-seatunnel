@@ -274,6 +274,20 @@ public final class FactoryUtil {
     }
 
     public static <T extends Factory> Optional<T> discoverOptionalFactory(
+            ClassLoader classLoader,
+            Class<T> factoryClass,
+            String factoryIdentifier,
+            Function<PluginIdentifier, T> transformFactoryFunction) {
+
+        if (transformFactoryFunction != null) {
+            return Optional.of(
+                    transformFactoryFunction.apply(
+                            PluginIdentifier.of("seatunnel", "transform", factoryIdentifier)));
+        }
+        return discoverOptionalFactory(classLoader, factoryClass, factoryIdentifier);
+    }
+
+    public static <T extends Factory> Optional<T> discoverOptionalFactory(
             ClassLoader classLoader, Class<T> factoryClass, String factoryIdentifier) {
         final List<T> foundFactories = discoverFactories(classLoader, factoryClass);
         if (foundFactories.isEmpty()) {
