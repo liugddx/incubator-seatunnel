@@ -17,6 +17,7 @@
 
 package org.apache.seatunnel.core.starter.spark.execution;
 
+import org.apache.seatunnel.shade.com.google.common.collect.Lists;
 import org.apache.seatunnel.shade.com.typesafe.config.Config;
 
 import org.apache.seatunnel.api.common.CommonOptions;
@@ -33,8 +34,11 @@ import org.apache.seatunnel.api.table.catalog.TablePath;
 import org.apache.seatunnel.api.table.factory.Factory;
 import org.apache.seatunnel.api.table.factory.FactoryUtil;
 import org.apache.seatunnel.api.table.factory.TableSinkFactory;
+import org.apache.seatunnel.common.constants.PluginType;
 import org.apache.seatunnel.common.exception.SeaTunnelRuntimeException;
+import org.apache.seatunnel.core.starter.enums.EngineType;
 import org.apache.seatunnel.core.starter.exception.TaskExecuteException;
+import org.apache.seatunnel.plugin.discovery.seatunnel.SeaTunnelFactoryDiscovery;
 import org.apache.seatunnel.plugin.discovery.seatunnel.SeaTunnelSinkPluginDiscovery;
 import org.apache.seatunnel.translation.spark.execution.DatasetTableInfo;
 import org.apache.seatunnel.translation.spark.sink.SparkSinkInjector;
@@ -73,14 +77,26 @@ public class SinkExecuteProcessor
     protected List<Optional<? extends Factory>> initializePlugins(
             List<? extends Config> pluginConfigs) {
         List<URL> pluginJars = new ArrayList<>();
+        SeaTunnelFactoryDiscovery sinkPluginDiscovery =
+                new SeaTunnelFactoryDiscovery(TableSinkFactory.class);
         List<Optional<? extends Factory>> sinks =
                 pluginConfigs.stream()
                         .map(
-                                sinkConfig ->
-                                        discoverOptionalFactory(
-                                                classLoader,
-                                                TableSinkFactory.class,
-                                                sinkConfig.getString(PLUGIN_NAME.key())))
+                                sinkConfig -> {
+                                    pluginJars.addAll(
+                                            sinkPluginDiscovery.getPluginJarPaths(
+                                                    Lists.newArrayList(
+                                                            PluginIdentifier.of(
+                                                                    EngineType.SEATUNNEL
+                                                                            .getEngine(),
+                                                                    PluginType.SINK.getType(),
+                                                                    sinkConfig.getString(
+                                                                            PLUGIN_NAME.key())))));
+                                    return discoverOptionalFactory(
+                                            classLoader,
+                                            TableSinkFactory.class,
+                                            sinkConfig.getString(PLUGIN_NAME.key()));
+                                })
                         .distinct()
                         .collect(Collectors.toList());
         sparkRuntimeEnvironment.registerPlugin(pluginJars);
