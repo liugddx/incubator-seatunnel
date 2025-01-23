@@ -18,6 +18,7 @@
 package org.apache.seatunnel.api.table.factory;
 
 import org.apache.seatunnel.api.common.CommonOptions;
+import org.apache.seatunnel.api.common.JobContext;
 import org.apache.seatunnel.api.common.PluginIdentifier;
 import org.apache.seatunnel.api.configuration.ReadonlyConfig;
 import org.apache.seatunnel.api.configuration.util.ConfigValidator;
@@ -37,6 +38,7 @@ import org.apache.seatunnel.api.table.catalog.TablePath;
 import org.apache.seatunnel.api.table.connector.TableSource;
 import org.apache.seatunnel.api.table.type.SeaTunnelDataType;
 import org.apache.seatunnel.api.transform.SeaTunnelTransform;
+import org.apache.seatunnel.common.constants.JobMode;
 import org.apache.seatunnel.common.utils.ExceptionUtils;
 
 import org.slf4j.Logger;
@@ -277,12 +279,10 @@ public final class FactoryUtil {
             ClassLoader classLoader,
             Class<T> factoryClass,
             String factoryIdentifier,
-            Function<PluginIdentifier, T> transformFactoryFunction) {
+            Function<String, T> transformFactoryFunction) {
 
         if (transformFactoryFunction != null) {
-            return Optional.of(
-                    transformFactoryFunction.apply(
-                            PluginIdentifier.of("seatunnel", "transform", factoryIdentifier)));
+            return Optional.of(transformFactoryFunction.apply(factoryIdentifier));
         }
         return discoverOptionalFactory(classLoader, factoryClass, factoryIdentifier);
     }
@@ -449,5 +449,15 @@ public final class FactoryUtil {
             log.debug(ExceptionUtils.getMessage(e));
         }
         return false;
+    }
+
+    public static void ensureJobModeMatch(JobContext jobContext, SeaTunnelSource source) {
+        if (jobContext.getJobMode() == JobMode.BATCH
+                && source.getBoundedness()
+                        == org.apache.seatunnel.api.source.Boundedness.UNBOUNDED) {
+            throw new UnsupportedOperationException(
+                    String.format(
+                            "'%s' source don't support off-line job.", source.getPluginName()));
+        }
     }
 }

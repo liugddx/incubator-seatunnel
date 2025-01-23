@@ -17,6 +17,7 @@
 
 package org.apache.seatunnel.core.starter.flink.execution;
 
+import org.apache.seatunnel.shade.com.google.common.collect.Lists;
 import org.apache.seatunnel.shade.com.typesafe.config.Config;
 
 import org.apache.seatunnel.api.common.CommonOptions;
@@ -35,8 +36,10 @@ import org.apache.seatunnel.api.table.factory.Factory;
 import org.apache.seatunnel.api.table.factory.FactoryUtil;
 import org.apache.seatunnel.api.table.factory.TableSinkFactory;
 import org.apache.seatunnel.api.table.type.SeaTunnelRow;
+import org.apache.seatunnel.common.constants.PluginType;
 import org.apache.seatunnel.common.exception.SeaTunnelRuntimeException;
 import org.apache.seatunnel.core.starter.exception.TaskExecuteException;
+import org.apache.seatunnel.plugin.discovery.seatunnel.SeaTunnelFactoryDiscovery;
 import org.apache.seatunnel.plugin.discovery.seatunnel.SeaTunnelSinkPluginDiscovery;
 import org.apache.seatunnel.translation.flink.sink.FlinkSink;
 
@@ -72,13 +75,36 @@ public class SinkExecuteProcessor
     @Override
     protected List<Optional<? extends Factory>> initializePlugins(
             List<URL> jarPaths, List<? extends Config> pluginConfigs) {
+        SeaTunnelFactoryDiscovery factoryDiscovery =
+                new SeaTunnelFactoryDiscovery(TableSinkFactory.class, ADD_URL_TO_CLASSLOADER);
+        SeaTunnelSinkPluginDiscovery sinkPluginDiscovery =
+                new SeaTunnelSinkPluginDiscovery(ADD_URL_TO_CLASSLOADER);
+        Function<String, TableSinkFactory> discoverOptionalFactory =
+                pluginName ->
+                        (TableSinkFactory)
+                                factoryDiscovery.createPluginInstance(
+                                        PluginIdentifier.of(
+                                                ENGINE_TYPE,
+                                                PluginType.SINK.getType(),
+                                                pluginName));
+
         return pluginConfigs.stream()
                 .map(
-                        sinkConfig ->
-                                discoverOptionalFactory(
-                                        classLoader,
-                                        TableSinkFactory.class,
-                                        sinkConfig.getString(PLUGIN_NAME.key())))
+                        sinkConfig -> {
+                            jarPaths.addAll(
+                                    sinkPluginDiscovery.getPluginJarPaths(
+                                            Lists.newArrayList(
+                                                    PluginIdentifier.of(
+                                                            ENGINE_TYPE,
+                                                            PluginType.SINK.getType(),
+                                                            sinkConfig.getString(
+                                                                    PLUGIN_NAME.key())))));
+                            return discoverOptionalFactory(
+                                    classLoader,
+                                    TableSinkFactory.class,
+                                    sinkConfig.getString(PLUGIN_NAME.key()),
+                                    discoverOptionalFactory);
+                        })
                 .distinct()
                 .collect(Collectors.toList());
     }

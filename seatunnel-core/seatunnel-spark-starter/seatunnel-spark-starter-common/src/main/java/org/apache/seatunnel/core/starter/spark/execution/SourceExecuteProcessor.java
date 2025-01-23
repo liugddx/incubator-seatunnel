@@ -52,7 +52,7 @@ import java.util.function.Function;
 
 import static org.apache.seatunnel.api.common.CommonOptions.PLUGIN_NAME;
 import static org.apache.seatunnel.api.common.CommonOptions.PLUGIN_OUTPUT;
-import static org.apache.seatunnel.core.starter.execution.PluginUtil.ensureJobModeMatch;
+import static org.apache.seatunnel.api.table.factory.FactoryUtil.ensureJobModeMatch;
 
 @SuppressWarnings("rawtypes")
 public class SourceExecuteProcessor extends SparkAbstractPluginExecuteProcessor<SourceTableInfo> {
