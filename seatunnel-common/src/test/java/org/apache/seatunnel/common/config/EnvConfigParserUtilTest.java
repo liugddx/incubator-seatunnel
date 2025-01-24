@@ -22,14 +22,25 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.net.URISyntaxException;
+import java.nio.file.Paths;
 import java.util.Map;
 
 public class EnvConfigParserUtilTest {
 
     private String originSeatunnelHome = null;
     private DeployMode originMode = null;
-    private static final String seatunnelHome =
-            EnvConfigParserUtilTest.class.getResource("/home").getPath();
+    private static final String seatunnelHome;
+
+    static {
+        try {
+            seatunnelHome =
+                    Paths.get(EnvConfigParserUtilTest.class.getResource("/home").toURI())
+                            .toString();
+        } catch (URISyntaxException e) {
+            throw new RuntimeException("Failed to get seatunnelHome path", e);
+        }
+    }
 
     @BeforeEach
     public void before() {
