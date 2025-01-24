@@ -36,6 +36,7 @@ public class SeaTunnelApiExample {
         flinkCommandArgs.setConfigFile(configFile);
         flinkCommandArgs.setCheckConfig(false);
         flinkCommandArgs.setVariables(null);
+        flinkCommandArgs.setJobName("test");
         SeaTunnel.run(flinkCommandArgs.buildCommand());
     }
 
