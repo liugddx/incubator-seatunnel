@@ -38,7 +38,9 @@ import org.apache.seatunnel.api.table.catalog.TablePath;
 import org.apache.seatunnel.api.table.connector.TableSource;
 import org.apache.seatunnel.api.table.type.SeaTunnelDataType;
 import org.apache.seatunnel.api.transform.SeaTunnelTransform;
+import org.apache.seatunnel.common.constants.EngineType;
 import org.apache.seatunnel.common.constants.JobMode;
+import org.apache.seatunnel.common.constants.PluginType;
 import org.apache.seatunnel.common.utils.ExceptionUtils;
 
 import org.slf4j.Logger;
@@ -108,7 +110,10 @@ public final class FactoryUtil {
             if (fallback) {
                 source =
                         fallbackCreateSource.apply(
-                                PluginIdentifier.of("seatunnel", "source", factoryId));
+                                PluginIdentifier.of(
+                                        EngineType.SEATUNNEL.getEngine(),
+                                        PluginType.SOURCE.getType(),
+                                        factoryId));
                 source.prepare(options.toConfig());
 
             } else {
@@ -207,7 +212,10 @@ public final class FactoryUtil {
             if (fallback) {
                 SeaTunnelSink sink =
                         fallbackCreateSink.apply(
-                                PluginIdentifier.of("seatunnel", "sink", factoryId));
+                                PluginIdentifier.of(
+                                        EngineType.SEATUNNEL.getEngine(),
+                                        PluginType.SINK.getType(),
+                                        factoryId));
                 sink.prepare(config.toConfig());
                 sink.setTypeInfo(catalogTable.getSeaTunnelRowType());
 
