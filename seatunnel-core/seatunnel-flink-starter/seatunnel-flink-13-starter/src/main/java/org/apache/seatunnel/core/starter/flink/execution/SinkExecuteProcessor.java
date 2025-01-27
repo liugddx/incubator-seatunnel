@@ -83,11 +83,13 @@ public class SinkExecuteProcessor
         Function<String, TableSinkFactory> discoverOptionalFactory =
                 pluginName ->
                         (TableSinkFactory)
-                                factoryDiscovery.createPluginInstance(
-                                        PluginIdentifier.of(
-                                                EngineType.SEATUNNEL.getEngine(),
-                                                PluginType.SINK.getType(),
-                                                pluginName));
+                                factoryDiscovery
+                                        .createOptionalPluginInstance(
+                                                PluginIdentifier.of(
+                                                        EngineType.SEATUNNEL.getEngine(),
+                                                        PluginType.SINK.getType(),
+                                                        pluginName))
+                                        .orElse(null);
 
         return pluginConfigs.stream()
                 .map(
