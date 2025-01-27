@@ -34,6 +34,7 @@ import org.apache.seatunnel.api.transform.SeaTunnelTransform;
 import org.apache.seatunnel.common.constants.EngineType;
 import org.apache.seatunnel.common.constants.PluginType;
 import org.apache.seatunnel.core.starter.exception.TaskExecuteException;
+import org.apache.seatunnel.plugin.discovery.seatunnel.SeaTunnelFactoryDiscovery;
 import org.apache.seatunnel.plugin.discovery.seatunnel.SeaTunnelTransformPluginDiscovery;
 import org.apache.seatunnel.translation.spark.execution.DatasetTableInfo;
 import org.apache.seatunnel.translation.spark.execution.MultiTableManager;
@@ -60,7 +61,6 @@ import java.util.stream.Collectors;
 
 import static org.apache.seatunnel.api.common.CommonOptions.PLUGIN_NAME;
 import static org.apache.seatunnel.api.common.CommonOptions.PLUGIN_OUTPUT;
-import static org.apache.seatunnel.api.table.factory.FactoryUtil.discoverOptionalFactory;
 
 @Slf4j
 public class TransformExecuteProcessor
@@ -78,6 +78,10 @@ public class TransformExecuteProcessor
 
         SeaTunnelTransformPluginDiscovery transformPluginDiscovery =
                 new SeaTunnelTransformPluginDiscovery();
+
+        SeaTunnelFactoryDiscovery factoryDiscovery =
+                new SeaTunnelFactoryDiscovery(TableTransformFactory.class);
+
         List<URL> pluginJars = new ArrayList<>();
         List<TableTransformFactory> transforms =
                 pluginConfigs.stream()
@@ -92,13 +96,17 @@ public class TransformExecuteProcessor
                                                                     PluginType.TRANSFORM.getType(),
                                                                     transformConfig.getString(
                                                                             PLUGIN_NAME.key())))));
-                                    return discoverOptionalFactory(
-                                            classLoader,
-                                            TableTransformFactory.class,
-                                            transformConfig.getString(PLUGIN_NAME.key()));
+                                    return Optional.of(
+                                            (TableTransformFactory)
+                                                    factoryDiscovery.createPluginInstance(
+                                                            PluginIdentifier.of(
+                                                                    EngineType.SEATUNNEL
+                                                                            .getEngine(),
+                                                                    PluginType.TRANSFORM.getType(),
+                                                                    transformConfig.getString(
+                                                                            PLUGIN_NAME.key()))));
                                 })
                         .distinct()
-                        .filter(Optional::isPresent)
                         .map(Optional::get)
                         .collect(Collectors.toList());
         sparkRuntimeEnvironment.registerPlugin(pluginJars);

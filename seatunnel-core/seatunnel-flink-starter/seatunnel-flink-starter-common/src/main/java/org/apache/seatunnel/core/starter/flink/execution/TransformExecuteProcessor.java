@@ -50,12 +50,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static org.apache.seatunnel.api.common.CommonOptions.PLUGIN_NAME;
 import static org.apache.seatunnel.api.common.CommonOptions.PLUGIN_OUTPUT;
-import static org.apache.seatunnel.api.table.factory.FactoryUtil.discoverOptionalFactory;
 
 @SuppressWarnings("unchecked,rawtypes")
 public class TransformExecuteProcessor
@@ -76,14 +74,6 @@ public class TransformExecuteProcessor
                 new SeaTunnelTransformPluginDiscovery();
         SeaTunnelFactoryDiscovery factoryDiscovery =
                 new SeaTunnelFactoryDiscovery(TableTransformFactory.class, ADD_URL_TO_CLASSLOADER);
-        Function<String, TableTransformFactory> discoverOptionalFactory =
-                pluginName ->
-                        (TableTransformFactory)
-                                factoryDiscovery.createPluginInstance(
-                                        PluginIdentifier.of(
-                                                EngineType.SEATUNNEL.getEngine(),
-                                                PluginType.TRANSFORM.getType(),
-                                                pluginName));
         return pluginConfigs.stream()
                 .map(
                         transformConfig -> {
@@ -95,14 +85,16 @@ public class TransformExecuteProcessor
                                                             PluginType.TRANSFORM.getType(),
                                                             transformConfig.getString(
                                                                     PLUGIN_NAME.key())))));
-                            return discoverOptionalFactory(
-                                    classLoader,
-                                    TableTransformFactory.class,
-                                    transformConfig.getString(PLUGIN_NAME.key()),
-                                    discoverOptionalFactory);
+                            return Optional.of(
+                                    (TableTransformFactory)
+                                            factoryDiscovery.createPluginInstance(
+                                                    PluginIdentifier.of(
+                                                            EngineType.SEATUNNEL.getEngine(),
+                                                            PluginType.TRANSFORM.getType(),
+                                                            transformConfig.getString(
+                                                                    PLUGIN_NAME.key()))));
                         })
                 .distinct()
-                .filter(Optional::isPresent)
                 .map(Optional::get)
                 .collect(Collectors.toList());
     }
