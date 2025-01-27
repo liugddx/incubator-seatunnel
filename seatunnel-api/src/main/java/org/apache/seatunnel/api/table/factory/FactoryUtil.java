@@ -290,7 +290,12 @@ public final class FactoryUtil {
             Function<String, T> transformFactoryFunction) {
 
         if (transformFactoryFunction != null) {
-            return Optional.of(transformFactoryFunction.apply(factoryIdentifier));
+            T apply = transformFactoryFunction.apply(factoryIdentifier);
+            if (apply != null) {
+                return Optional.of(apply);
+            } else {
+                return Optional.empty();
+            }
         }
         return discoverOptionalFactory(classLoader, factoryClass, factoryIdentifier);
     }
