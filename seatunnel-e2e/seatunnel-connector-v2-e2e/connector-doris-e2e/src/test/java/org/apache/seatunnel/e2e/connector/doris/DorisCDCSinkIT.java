@@ -234,6 +234,7 @@ public class DorisCDCSinkIT extends AbstractDorisIT {
     private void clearTable(String database, String tableName) {
         executeDorisSql("truncate table " + database + "." + tableName);
     }
+
     @AfterAll
     public void close() {
         if (MYSQL_CONTAINER != null) {
