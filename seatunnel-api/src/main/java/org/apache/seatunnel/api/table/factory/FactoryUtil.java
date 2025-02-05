@@ -287,10 +287,10 @@ public final class FactoryUtil {
             ClassLoader classLoader,
             Class<T> factoryClass,
             String factoryIdentifier,
-            Function<String, T> transformFactoryFunction) {
+            Function<String, T> discoverOptionalFactoryFunction) {
 
-        if (transformFactoryFunction != null) {
-            T apply = transformFactoryFunction.apply(factoryIdentifier);
+        if (discoverOptionalFactoryFunction != null) {
+            T apply = discoverOptionalFactoryFunction.apply(factoryIdentifier);
             if (apply != null) {
                 return Optional.of(apply);
             } else {

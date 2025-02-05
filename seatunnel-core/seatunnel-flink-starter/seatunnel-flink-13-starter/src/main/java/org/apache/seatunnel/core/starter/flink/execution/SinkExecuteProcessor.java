@@ -80,7 +80,7 @@ public class SinkExecuteProcessor
                 new SeaTunnelFactoryDiscovery(TableSinkFactory.class, ADD_URL_TO_CLASSLOADER);
         SeaTunnelSinkPluginDiscovery sinkPluginDiscovery =
                 new SeaTunnelSinkPluginDiscovery(ADD_URL_TO_CLASSLOADER);
-        Function<String, TableSinkFactory> discoverOptionalFactory =
+        Function<String, TableSinkFactory> discoverOptionalFactoryFunction =
                 pluginName ->
                         (TableSinkFactory)
                                 factoryDiscovery
@@ -106,7 +106,7 @@ public class SinkExecuteProcessor
                                     classLoader,
                                     TableSinkFactory.class,
                                     sinkConfig.getString(PLUGIN_NAME.key()),
-                                    discoverOptionalFactory);
+                                    discoverOptionalFactoryFunction);
                         })
                 .distinct()
                 .collect(Collectors.toList());
