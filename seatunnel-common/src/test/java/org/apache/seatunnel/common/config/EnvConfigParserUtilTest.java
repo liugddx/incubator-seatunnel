@@ -17,56 +17,18 @@
 
 package org.apache.seatunnel.common.config;
 
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junitpioneer.jupiter.SetEnvironmentVariable;
 
-import java.net.URISyntaxException;
-import java.nio.file.Paths;
 import java.util.Map;
 
 public class EnvConfigParserUtilTest {
 
-    private String originSeatunnelHome = null;
-    private DeployMode originMode = null;
-    private static final String seatunnelHome;
-
-    static {
-        try {
-            seatunnelHome =
-                    Paths.get(EnvConfigParserUtilTest.class.getResource("/home").toURI())
-                            .toString();
-        } catch (URISyntaxException e) {
-            throw new RuntimeException("Failed to get seatunnelHome path", e);
-        }
-    }
-
-    @BeforeEach
-    public void before() {
-        originMode = Common.getDeployMode();
-        Common.setDeployMode(DeployMode.CLIENT);
-        originSeatunnelHome = Common.getSeaTunnelHome();
-        Common.setSeaTunnelHome(seatunnelHome);
-    }
-
     @Test
+    @SetEnvironmentVariable(key = "A", value = "B")
     public void testParseEnvConfig() {
         Map<String, String> envMap = EnvConfigParserUtil.parseEnvConfig();
-        Assertions.assertEquals(2, envMap.size());
-        String os = System.getProperty("os.name").toLowerCase();
-        if (os.startsWith("win")) {
-            Assertions.assertEquals("C:\\Program Files\\spark", envMap.get("SPARK_HOME"));
-            Assertions.assertEquals("C:\\Program Files\\flink", envMap.get("FLINK_HOME"));
-            return;
-        }
-        Assertions.assertEquals("/opt/spark", envMap.get("SPARK_HOME"));
-        Assertions.assertEquals("/opt/flink", envMap.get("FLINK_HOME"));
-    }
-
-    @AfterEach
-    public void after() {
-        Common.setSeaTunnelHome(originSeatunnelHome);
-        Common.setDeployMode(originMode);
+        Assertions.assertEquals("B", envMap.get("A"));
     }
 }
